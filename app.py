@@ -252,22 +252,59 @@ with st.sidebar:
         "resnet50_brain.pth\ncnn_brain.pth\nhog_svm_brain.joblib",
         language=None,
     )
+# ---------------------------------------------------------------------------
+# Image selection
+# ---------------------------------------------------------------------------
+SAMPLE_DIR = Path(__file__).resolve().parent / "sample_images"
 
-uploaded = st.file_uploader(
-    "Upload MRI image",
-    type=["jpg", "jpeg", "png", "bmp", "tif", "tiff"],
+sample_images = (
+    sorted([
+        p for p in SAMPLE_DIR.iterdir()
+        if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+    ])
+    if SAMPLE_DIR.exists()
+    else []
 )
 
-if uploaded is None:
-    st.info("Upload an image to start.")
-    st.stop()
+image_source = st.radio(
+    "Choose image source",
+    ["Sample images", "Upload your own"],
+    horizontal=True,
+)
 
-pil_img = Image.open(uploaded).convert("RGB")
+pil_img = None
+
+if image_source == "Sample images":
+    if sample_images:
+        selected_image = st.selectbox(
+            "Select a sample MRI image",
+            sample_images,
+            format_func=lambda p: p.name,
+        )
+        pil_img = Image.open(selected_image).convert("RGB")
+    else:
+        st.warning("No sample images found in the sample_images folder.")
+        st.stop()
+
+else:
+    uploaded = st.file_uploader(
+        "Upload MRI image",
+        type=["jpg", "jpeg", "png", "bmp", "tif", "tiff"],
+    )
+
+    if uploaded is None:
+        st.info("Upload an image to start.")
+        st.stop()
+
+    pil_img = Image.open(uploaded).convert("RGB")
+
 col_img, col_out = st.columns([1, 1.2])
 
 with col_img:
     st.subheader("Input")
     st.image(pil_img, use_container_width=True)
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_dir = Path(model_dir)
